@@ -1,0 +1,30 @@
+{
+    "name": "pump.io-statusnet",
+    "homepage": "http://pump.io/",
+    "version": "0.1.0-alpha.1",
+    "author": "Evan Prodromou <evan@e14n.com>",
+    "main": "./index.js",
+    "devDependencies": {
+        "vows": "0.7.x"
+    },
+    "dependencies": {"underscore": "1.4.x", 
+    		     "databank": "~0.18.1",
+                     "step": "0.0.x"},
+    "scripts": {
+        "test": "vows test/*-test.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/e14n/pump.io-statusnet.git"
+    },
+    "keywords": ["pump.io", "plugin", "statusnet"],
+    "licenses": [
+        {
+            "type": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
+    ],
+    "engine": {
+        "node": ">=0.8"
+    }
+}
