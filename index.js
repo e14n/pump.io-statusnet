@@ -31,10 +31,12 @@ module.exports = {
     initializeSchema: function(schema) {
         return;
     },
-
     initializeApp: function(app) {
         app.get("/theme/neo/default-avatar-profile.png", function(req, res, next) {
-            res.redirect(301, "/images/default.png");
+            res.redirect("/images/default.png", 301);
         });
+        // This puts our route at the top
+        var get = app.routes.routes.get;
+        get.unshift(get.pop());
     }
 };
