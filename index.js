@@ -17,7 +17,8 @@
 // limitations under the License.
 
 var Step = require("step"),
-    _ = require("underscore");
+    _ = require("underscore"),
+    Note = require("../../lib/model/note").Note;
 
 module.exports = {
 
@@ -32,11 +33,28 @@ module.exports = {
         return;
     },
     initializeApp: function(app) {
+        var get = app.routes.routes.get;
         app.get("/theme/neo/default-avatar-profile.png", function(req, res, next) {
             res.redirect("/images/default.png", 301);
         });
         // This puts our route at the top
-        var get = app.routes.routes.get;
+        get.unshift(get.pop());
+        app.get("/notice/:id", function(req, res, next) {
+            Step(
+                function() {
+                    Note.search({"status_net.notice_id": req.params.id}, this);
+                },
+                function(err, notes) {
+                    if (err) {
+                        throw err;
+                    } else if (!notes || notes.length != 1) {
+                        throw new Error("Error finding note");
+                    } else {
+                    }
+                }
+            );
+        });
+        // This puts our route at the top
         get.unshift(get.pop());
     }
 };
