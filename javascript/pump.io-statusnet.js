@@ -88,20 +88,15 @@ if (!window.Pump) {
                            Pump.error("Error fetching user");
                        },
                        success: function(data) {
-                           var obj = Pump.ActivityObject.unique(data);
-
-                           Pump.body.setContent({contentView: Pump.ObjectContent,
-                                                 model: obj,
-                                                 title: obj.get("displayName") || "message"},
-                                                function() {
-                                                    Pump.body.endLoad();
-                                                });
+                           var obj = Pump.ActivityObject.unique(data),
+                               nickname = obj.get("preferredUsername");
+                           Pump.router.navigate("/"+nickname, true);
                        }
                       });
         });
 
         Pump.router.route("conversation/:id", "conversation", function(id) {
-            Pump.router.navigate("/notice/"+id);
+            Pump.router.navigate("/notice/"+id, true);
         });
 
         Pump.router.route("tag/:tag", "tag", function(tag) {

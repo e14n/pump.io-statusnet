@@ -156,6 +156,30 @@ var StatusnetPlugin = function() {
                     }
                 }
             );
+        },
+        jsonPerson = function(req, res, next) {
+
+            var obj = req.person,
+                profile = req.principal;
+
+            Step(
+                function() {
+                    obj.expandFeeds(this);
+                },
+                function(err) {
+                    if (err) throw err;
+                    addFollowed(profile, [obj], this.parallel());
+                },
+                function(err) {
+                    var title;
+                    if (err) {
+                        next(err);
+                    } else {
+                        obj.sanitize(principal);
+                        res.json(obj);
+                    }
+                }
+            );
         };
 
 
@@ -210,30 +234,15 @@ var StatusnetPlugin = function() {
         });
 
         addRoute(app, "/api/notice/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
-            var path = _.getPath(req.note, ["links", "self", "href"]);
-            if (!path) {
-                next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
-            } else {
-                res.redirect(path, 301);
-            }
+            jsonNote(req, res, next);
         });
 
         addRoute(app, "/api/message/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
-            var path = _.getPath(req.note, ["links", "self", "href"]);
-            if (!path) {
-                next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
-            } else {
-                res.redirect(path, 301);
-            }
+            jsonNote(req, res, next);
         });
 
         addRoute(app, "/api/user/:id", userFromID, function(req, res, next) {
-            var path = _.getPath(req.person, ["links", "self", "href"]);
-            if (!path) {
-                next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
-            } else {
-                res.redirect(path, 301);
-            }
+            jsonPerson(req, res, next);
         });
     };
 };
