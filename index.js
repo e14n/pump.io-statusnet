@@ -25,8 +25,8 @@ var path = require("path"),
     Note = require("../../lib/model/note").Note,
     Person = require("../../lib/model/person").Person,
     HTTPError = require("../../lib/httperror").HTTPError,
-    authc = require("../lib/authc"),
-    omw = require("../lib/objectmiddleware"),
+    authc = require("../../lib/authc"),
+    omw = require("../../lib/objectmiddleware"),
     principal = authc.principal,
     addLiked = finishers.addLiked,
     addShared = finishers.addShared,
@@ -174,42 +174,42 @@ var StatusnetPlugin = function() {
     };
 
     plugin.getScript = function() {
-        return "/public/javascript/pump.io-statusnet.js";
+        return "/javascript/pump.io-statusnet.js";
     };
 
     plugin.initializeApp = function(app) {
 
-        addRoute("/theme/neo/default-avatar-profile.png", function(req, res, next) {
+        addRoute(app, "/theme/neo/default-avatar-profile.png", function(req, res, next) {
             res.redirect("/images/default.png", 301);
         });
 
-        addRoute("/public/javascript/pump.io-statusnet.js", function(req, res, next) {
+        addRoute(app, "/javascript/pump.io-statusnet.js", function(req, res, next) {
             var root = path.join(__dirname, "javascript");
             res.sendfile("pump.io-statusnet.js", {root: root});
         });
 
-        addRoute("/notice/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
+        addRoute(app, "/notice/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
             showNote(req, res, next);
         });
 
-        addRoute("/conversation/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
+        addRoute(app, "/conversation/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
             res.redirect(req.note.url, 301);
         });
 
-        addRoute("/message/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
+        addRoute(app, "/message/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
             showNote(req, res, next);
         });
 
-        addRoute("/user/:id", userFromID, function(req, res, next) {
+        addRoute(app, "/user/:id", userFromID, function(req, res, next) {
             res.redirect(req.person.url, 301);
         });
 
-        addRoute("/tag/:tag", function(req, res, next) {
+        addRoute(app, "/tag/:tag", function(req, res, next) {
             var tag = req.params.tag;
             res.redirect("https://ragtag.io/tag/"+tag);
         });
 
-        addRoute("/api/notice/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
+        addRoute(app, "/api/notice/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
             var path = _.getPath(req.note, ["links", "self", "href"]);
             if (!path) {
                 next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
@@ -218,7 +218,7 @@ var StatusnetPlugin = function() {
             }
         });
 
-        addRoute("/api/message/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
+        addRoute(app, "/api/message/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
             var path = _.getPath(req.note, ["links", "self", "href"]);
             if (!path) {
                 next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
@@ -227,7 +227,7 @@ var StatusnetPlugin = function() {
             }
         });
 
-        addRoute("/api/user/:id", userFromID, function(req, res, next) {
+        addRoute(app, "/api/user/:id", userFromID, function(req, res, next) {
             var path = _.getPath(req.person, ["links", "self", "href"]);
             if (!path) {
                 next(new HTTPError("Object lacks a self link: " + req.note.id, 500));

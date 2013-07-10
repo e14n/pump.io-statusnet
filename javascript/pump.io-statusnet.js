@@ -27,93 +27,85 @@ if (!window.Pump) {
     // Main entry point
 
     $(document).ready(function() {
-        
-        _.extend(Pump.router.routes, {
-            routes: {
-                "notice/:id":          "notice",
-                "message/:id":         "message",
-                "user/:id":            "user",
-                "conversation/:id":    "conversation",
-                "tag/:tag":            "tag"
-            }
+
+        Pump.router.route("notice/:id", "notice", function(id) {
+            var router = this;
+
+            Pump.body.startLoad();
+
+            Pump.ajax({url: "/api/notice/"+id,
+                       dataType: "json",
+                       type: "GET",
+                       error: function(jqxhr) {
+                           Pump.error("Error fetching notice");
+                       },
+                       success: function(data) {
+                           var obj = Pump.ActivityObject.unique(data);
+
+                           Pump.body.setContent({contentView: Pump.ObjectContent,
+                                                 model: obj,
+                                                 title: obj.get("displayName") || "notice"},
+                                                function() {
+                                                    Pump.body.endLoad();
+                                                });
+                       }
+                      });
         });
 
-        _.extend(Pump.router, {
-            notice: function(id) {
-                var router = this;
+        Pump.router.route("message/:id", "message", function(id) {
+            var router = this;
 
-                Pump.body.startLoad();
+            Pump.body.startLoad();
 
-                Pump.ajax({url: "/api/notice/"+id,
-                           dataType: "json",
-                           type: "GET",
-                           error: function(jqxhr) {
-                               Pump.error("Error fetching notice");
-                           },
-                           success: function(data) {
-                               var obj = Pump.ActivityObject.unique(data);
+            Pump.ajax({url: "/api/message/"+id,
+                       dataType: "json",
+                       type: "GET",
+                       error: function(jqxhr) {
+                           Pump.error("Error fetching message");
+                       },
+                       success: function(data) {
+                           var obj = Pump.ActivityObject.unique(data);
 
-                               Pump.body.setContent({contentView: Pump.ObjectContent,
-                                                     model: obj,
-                                                     title: obj.get("displayName") || "notice"},
-                                                    function() {
-                                                        Pump.body.endLoad();
-                                                    });
-                           }
-                          });
-            },
-            message: function(id) {
-                var router = this;
+                           Pump.body.setContent({contentView: Pump.ObjectContent,
+                                                 model: obj,
+                                                 title: obj.get("displayName") || "message"},
+                                                function() {
+                                                    Pump.body.endLoad();
+                                                });
+                       }
+                      });
+        });
 
-                Pump.body.startLoad();
+        Pump.router.route("user/:id", "user", function(id) {
+            var router = this;
 
-                Pump.ajax({url: "/api/message/"+id,
-                           dataType: "json",
-                           type: "GET",
-                           error: function(jqxhr) {
-                               Pump.error("Error fetching message");
-                           },
-                           success: function(data) {
-                               var obj = Pump.ActivityObject.unique(data);
+            Pump.body.startLoad();
 
-                               Pump.body.setContent({contentView: Pump.ObjectContent,
-                                                     model: obj,
-                                                     title: obj.get("displayName") || "message"},
-                                                    function() {
-                                                        Pump.body.endLoad();
-                                                    });
-                           }
-                          });
-            },
-            user: function(id) {
-                var router = this;
+            Pump.ajax({url: "/api/user/"+id,
+                       dataType: "json",
+                       type: "GET",
+                       error: function(jqxhr) {
+                           Pump.error("Error fetching user");
+                       },
+                       success: function(data) {
+                           var obj = Pump.ActivityObject.unique(data);
 
-                Pump.body.startLoad();
+                           Pump.body.setContent({contentView: Pump.ObjectContent,
+                                                 model: obj,
+                                                 title: obj.get("displayName") || "message"},
+                                                function() {
+                                                    Pump.body.endLoad();
+                                                });
+                       }
+                      });
+        });
 
-                Pump.ajax({url: "/api/user/"+id,
-                           dataType: "json",
-                           type: "GET",
-                           error: function(jqxhr) {
-                               Pump.error("Error fetching user");
-                           },
-                           success: function(data) {
-                               var obj = Pump.ActivityObject.unique(data);
+        Pump.router.route("conversation/:id", "conversation", function(id) {
+            Pump.router.navigate("/notice/"+id);
+        });
 
-                               Pump.body.setContent({contentView: Pump.ObjectContent,
-                                                     model: obj,
-                                                     title: obj.get("displayName") || "message"},
-                                                    function() {
-                                                        Pump.body.endLoad();
-                                                    });
-                           }
-                          });
-            },
-            conversation: function(id) {
-                Pump.router.navigate("/notice/"+id);
-            },
-            tag: function(tag) {
-                window.location.replace("https://ragtag.io/"+tag);
-            }
+        Pump.router.route("tag/:tag", "tag", function(tag) {
+            window.location.replace("https://ragtag.io/"+tag);
         });
     });
 
