@@ -40,10 +40,73 @@ if (!window.Pump) {
 
         _.extend(Pump.router, {
             notice: function(id) {
+                var router = this;
+
+                Pump.body.startLoad();
+
+                Pump.ajax({url: "/api/notice/"+id,
+                           dataType: "json",
+                           type: "GET",
+                           error: function(jqxhr) {
+                               Pump.error("Error fetching notice");
+                           },
+                           success: function(data) {
+                               var obj = Pump.ActivityObject.unique(data);
+
+                               Pump.body.setContent({contentView: Pump.ObjectContent,
+                                                     model: obj,
+                                                     title: obj.get("displayName") || "notice"},
+                                                    function() {
+                                                        Pump.body.endLoad();
+                                                    });
+                           }
+                          });
             },
             message: function(id) {
+                var router = this;
+
+                Pump.body.startLoad();
+
+                Pump.ajax({url: "/api/message/"+id,
+                           dataType: "json",
+                           type: "GET",
+                           error: function(jqxhr) {
+                               Pump.error("Error fetching message");
+                           },
+                           success: function(data) {
+                               var obj = Pump.ActivityObject.unique(data);
+
+                               Pump.body.setContent({contentView: Pump.ObjectContent,
+                                                     model: obj,
+                                                     title: obj.get("displayName") || "message"},
+                                                    function() {
+                                                        Pump.body.endLoad();
+                                                    });
+                           }
+                          });
             },
             user: function(id) {
+                var router = this;
+
+                Pump.body.startLoad();
+
+                Pump.ajax({url: "/api/user/"+id,
+                           dataType: "json",
+                           type: "GET",
+                           error: function(jqxhr) {
+                               Pump.error("Error fetching user");
+                           },
+                           success: function(data) {
+                               var obj = Pump.ActivityObject.unique(data);
+
+                               Pump.body.setContent({contentView: Pump.ObjectContent,
+                                                     model: obj,
+                                                     title: obj.get("displayName") || "message"},
+                                                    function() {
+                                                        Pump.body.endLoad();
+                                                    });
+                           }
+                          });
             },
             conversation: function(id) {
                 Pump.router.navigate("/notice/"+id);

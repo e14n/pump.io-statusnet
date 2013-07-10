@@ -24,174 +24,218 @@ var path = require("path"),
     finishers = require("../../lib/finishers"),
     Note = require("../../lib/model/note").Note,
     Person = require("../../lib/model/person").Person,
+    HTTPError = require("../../lib/httperror").HTTPError,
+    authc = require("../lib/authc"),
+    omw = require("../lib/objectmiddleware"),
+    principal = authc.principal,
     addLiked = finishers.addLiked,
     addShared = finishers.addShared,
     addLikers = finishers.addLikers,
     firstFewReplies = finishers.firstFewReplies,
     firstFewShares = finishers.firstFewShares,
-    addFollowed = finishers.addFollowed;
+    addFollowed = finishers.addFollowed,
+    principalAuthorOrRecipient = omw.principalAuthorOrRecipient,
+    anyReadAuth = authc.anyReadAuth,
+    authorOrRecipient = omw.authorOrRecipient;
 
-module.exports = {
+var StatusnetPlugin = function() {
 
-    log: null,
-
-    initializeLog: function(log) {
-        this.log = log.child({component: "pump.io-statusnet"});
-        return;
-    },
-    initializeSchema: function(schema) {
-        // Add indices that help us
-        schema.person.indices.push("upstreamDuplicates.0");
-        schema.person.indices.push("status_net.profile_info.local_id");
-        schema.note.indices.push("status_net.notice_id");
-        schema.note.indices.push("status_net.message_id");
-        schema.group.indices.push("upstreamDuplicates.0");
-    },
-    getScript: function() {
-        return "/public/javascript/pump.io-statusnet.js";
-    },
-    initializeApp: function(app) {
-        var get = app.routes.routes.get;
-        app.get("/theme/neo/default-avatar-profile.png", function(req, res, next) {
-            res.redirect("/images/default.png", 301);
-        });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/public/javascript/pump.io-statusnet.js", function(req, res, next) {
-            var root = path.join(__dirname, "javascript");
-            res.sendfile("pump.io-statusnet.js", {root: root});
-        });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/notice/:id", function(req, res, next) {
+    var plugin = this,
+        log = null,
+        addRoute = function(app) {
+            var get = app.routes.routes.get,
+                args = Array.prototype.slice.call(arguments, 1);
+            app.get.apply(app, args);
+            // This puts our route at the top
+            get.unshift(get.pop());
+        },
+        noteFromID = function(req, res, next) {
             Step(
                 function() {
                     Note.search({"status_net.notice_id": req.params.id}, this);
                 },
                 function(err, notes) {
                     if (err) {
-                        throw err;
+                        next(err);
                     } else if (!notes || notes.length != 1) {
-                        throw new Error("Error finding note");
+                        next(new HTTPError("No such note: " + req.params.id, 404));
                     } else {
-                        showNote(req, res, next, notes[0]);
+                        req.note = notes[0];
+                        req.type = Note.type;
+                        next();
                     }
                 }
             );
-        });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/conversation/:id", function(req, res, next) {
-            Step(
-                function() {
-                    Note.search({"status_net.notice_id": req.params.id}, this);
-                },
-                function(err, notes) {
-                    if (err) {
-                        throw err;
-                    } else if (!notes || notes.length != 1) {
-                        throw new Error("Error finding note");
-                    } else {
-                        showNote(req, res, next, notes[0]);
-                    }
-                }
-            );
-        });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/message/:id", function(req, res, next) {
-            Step(
-                function() {
-                    Note.search({"status_net.message_id": req.params.id}, this);
-                },
-                function(err, notes) {
-                    if (err) {
-                        throw err;
-                    } else if (!notes || notes.length != 1) {
-                        throw new Error("Error finding note");
-                    } else {
-                        showNote(req, res, next, notes[0]);
-                    }
-                }
-            );
-        });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/user/:id", function(req, res, next) {
+        },
+        userFromID = function(req, res, next) {
             Step(
                 function() {
                     Person.search({"status_net.profile_info.local_id": req.params.id}, this);
                 },
                 function(err, people) {
                     if (err) {
-                        throw err;
+                        next(err);
                     } else if (!people || people.length != 1) {
-                        throw new Error("Error finding note");
+                        next(new HTTPError("No user with id " + req.params.id, 404));
                     } else {
-                        // Permanent redirect
-                        res.redirect(people[0].url, 301);
+                        req.person = people[0];
+                        next();
                     }
                 }
             );
+        },
+        showNote = function(req, res, next) {
+
+            var obj = req.note,
+                person = obj.author,
+                profile = req.principal;
+
+            Step(
+                function() {
+                    obj.expandFeeds(this);
+                },
+                function(err) {
+                    if (err) throw err;
+                    addLiked(profile, [obj], this.parallel());
+                    addShared(profile, [obj], this.parallel());
+                    addLikers(profile, [obj], this.parallel());
+                    firstFewReplies(profile, [obj], this.parallel());
+                    firstFewShares(profile, [obj], this.parallel());
+                    if (obj.isFollowable()) {
+                        addFollowed(profile, [obj], this.parallel());
+                    }
+                },
+                function(err) {
+                    var title;
+                    if (err) {
+                        next(err);
+                    } else {
+                        if (obj.displayName) {
+                            title = obj.displayName;
+                        } else {
+                            title = "note by " + person.displayName;
+                        }
+                        res.render("object", {page: {title: title, url: req.originalUrl},
+                                              object: obj,
+                                              data: {
+                                                  object: obj
+                                              }
+                                             });
+                    }
+                }
+            );
+        },
+        jsonNote = function(req, res, next) {
+
+            var obj = req.note,
+                person = obj.author,
+                profile = req.principal;
+
+            Step(
+                function() {
+                    obj.expandFeeds(this);
+                },
+                function(err) {
+                    if (err) throw err;
+                    addLiked(profile, [obj], this.parallel());
+                    addShared(profile, [obj], this.parallel());
+                    addLikers(profile, [obj], this.parallel());
+                    firstFewReplies(profile, [obj], this.parallel());
+                    firstFewShares(profile, [obj], this.parallel());
+                    if (obj.isFollowable()) {
+                        addFollowed(profile, [obj], this.parallel());
+                    }
+                },
+                function(err) {
+                    var title;
+                    if (err) {
+                        next(err);
+                    } else {
+                        obj.sanitize(principal);
+                        res.json(obj);
+                    }
+                }
+            );
+        };
+
+
+    plugin.initializeLog = function(log) {
+        this.log = log.child({component: "pump.io-statusnet"});
+        return;
+    };
+
+    plugin.initializeSchema = function(schema) {
+        // Add indices that help us
+        schema.person.indices.push("upstreamDuplicates.0");
+        schema.person.indices.push("status_net.profile_info.local_id");
+        schema.note.indices.push("status_net.notice_id");
+        schema.note.indices.push("status_net.message_id");
+        schema.group.indices.push("upstreamDuplicates.0");
+    };
+
+    plugin.getScript = function() {
+        return "/public/javascript/pump.io-statusnet.js";
+    };
+
+    plugin.initializeApp = function(app) {
+
+        addRoute("/theme/neo/default-avatar-profile.png", function(req, res, next) {
+            res.redirect("/images/default.png", 301);
         });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/tag/:tag", function(req, res, next) {
+
+        addRoute("/public/javascript/pump.io-statusnet.js", function(req, res, next) {
+            var root = path.join(__dirname, "javascript");
+            res.sendfile("pump.io-statusnet.js", {root: root});
+        });
+
+        addRoute("/notice/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
+            showNote(req, res, next);
+        });
+
+        addRoute("/conversation/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
+            res.redirect(req.note.url, 301);
+        });
+
+        addRoute("/message/:id", app.session, principal, noteFromID, principalAuthorOrRecipient, function(req, res, next) {
+            showNote(req, res, next);
+        });
+
+        addRoute("/user/:id", userFromID, function(req, res, next) {
+            res.redirect(req.person.url, 301);
+        });
+
+        addRoute("/tag/:tag", function(req, res, next) {
             var tag = req.params.tag;
             res.redirect("https://ragtag.io/tag/"+tag);
         });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/api/notice/:id", function(req, res, next) {
-        });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/api/message/:id", function(req, res, next) {
-        });
-        // This puts our route at the top
-        get.unshift(get.pop());
-        app.get("/api/user/:id", function(req, res, next) {
-        });
-    }
-};
 
-var showNote = function(req, res, next, obj) {
-
-    var person = obj.author,
-        profile = req.principal;
-
-    Step(
-        function() {
-            obj.expandFeeds(this);
-        },
-        function(err) {
-            if (err) throw err;
-            addLiked(profile, [obj], this.parallel());
-            addShared(profile, [obj], this.parallel());
-            addLikers(profile, [obj], this.parallel());
-            firstFewReplies(profile, [obj], this.parallel());
-            firstFewShares(profile, [obj], this.parallel());
-            if (obj.isFollowable()) {
-                addFollowed(profile, [obj], this.parallel());
-            }
-        },
-        function(err) {
-            var title;
-            if (err) {
-                next(err);
+        addRoute("/api/notice/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
+            var path = _.getPath(req.note, ["links", "self", "href"]);
+            if (!path) {
+                next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
             } else {
-                if (obj.displayName) {
-                    title = obj.displayName;
-                } else {
-                    title = "note by " + person.displayName;
-                }
-                res.render("object", {page: {title: title, url: req.originalUrl},
-                                      object: obj,
-                                      data: {
-                                          object: obj
-                                      }
-                                     });
+                res.redirect(path, 301);
             }
-        }
-    );
+        });
+
+        addRoute("/api/message/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
+            var path = _.getPath(req.note, ["links", "self", "href"]);
+            if (!path) {
+                next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
+            } else {
+                res.redirect(path, 301);
+            }
+        });
+
+        addRoute("/api/user/:id", userFromID, function(req, res, next) {
+            var path = _.getPath(req.person, ["links", "self", "href"]);
+            if (!path) {
+                next(new HTTPError("Object lacks a self link: " + req.note.id, 500));
+            } else {
+                res.redirect(path, 301);
+            }
+        });
+    };
 };
+
+module.exports = new StatusnetPlugin();
