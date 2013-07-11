@@ -233,15 +233,15 @@ var StatusnetPlugin = function() {
             res.redirect("https://ragtag.io/tag/"+tag);
         });
 
-        addRoute(app, "/api/notice/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
+        addRoute(app, "/api/statusnet/notice/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
             jsonNote(req, res, next);
         });
 
-        addRoute(app, "/api/message/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
+        addRoute(app, "/api/statusnet/message/:id", app.session, anyReadAuth, noteFromID, authorOrRecipient, function(req, res, next) {
             jsonNote(req, res, next);
         });
 
-        addRoute(app, "/api/user/:id", userFromID, function(req, res, next) {
+        addRoute(app, "/api/statusnet/user/:id", userFromID, function(req, res, next) {
             jsonPerson(req, res, next);
         });
     };

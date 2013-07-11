@@ -33,7 +33,7 @@ if (!window.Pump) {
 
             Pump.body.startLoad();
 
-            Pump.ajax({url: "/api/notice/"+id,
+            Pump.ajax({url: "/api/statusnet/notice/"+id,
                        dataType: "json",
                        type: "GET",
                        error: function(jqxhr) {
@@ -57,7 +57,7 @@ if (!window.Pump) {
 
             Pump.body.startLoad();
 
-            Pump.ajax({url: "/api/message/"+id,
+            Pump.ajax({url: "/api/statusnet/message/"+id,
                        dataType: "json",
                        type: "GET",
                        error: function(jqxhr) {
@@ -81,7 +81,7 @@ if (!window.Pump) {
 
             Pump.body.startLoad();
 
-            Pump.ajax({url: "/api/user/"+id,
+            Pump.ajax({url: "/api/statusnet/user/"+id,
                        dataType: "json",
                        type: "GET",
                        error: function(jqxhr) {
