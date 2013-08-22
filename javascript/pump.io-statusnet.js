@@ -100,7 +100,7 @@ if (!window.Pump) {
         });
 
         Pump.router.route("tag/:tag", "tag", function(tag) {
-            window.location.replace("https://ragtag.io/"+tag);
+            window.location.replace("https://ragtag.io/tag/"+tag);
         });
     });
 
